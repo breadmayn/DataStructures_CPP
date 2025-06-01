@@ -1,4 +1,4 @@
-cmake_minimum_required(3.31)
+cmake_minimum_required(VERSION 3.31)
 project(DataStructures_CPP)
 
 # GoogleTest requires at least C++17
@@ -19,15 +19,16 @@ include_directories(include)
 
 # defining source files
 set(SOURCES
-    src/...
+    src/temp.cpp
 )
 
 # adding source files
-add_executable(DataStructures ${SOURCES})
+add_library(DataStructures ${SOURCES})
 
 # defining test files
 set(TESTS
-    tests/...
+    tests/temp.cpp
+    tests/main.cpp
 )
 
 # adding test executable
@@ -36,6 +37,6 @@ add_executable(DataStructures_Test
     ${SOURCES}
 )
 
-target_link_libraries(DataStructures_Test gtest_main)
+target_link_libraries(DataStructures_Test gtest_main DataStructures)
 include(GoogleTest)
 gtest_discover_tests(DataStructures_Test)
