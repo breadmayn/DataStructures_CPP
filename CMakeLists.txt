@@ -21,7 +21,7 @@ include_directories(include)
 
 # defining source files
 set(SOURCES
-    src/SinglyLinkedList.cpp
+    src/SinglyLinkedList.cpp # removing because of template class
 )
 
 # adding source files
@@ -36,7 +36,7 @@ set(TESTS
 # adding test executable
 add_executable(DataStructures_Test
     ${TESTS}
-    ${SOURCES}
+    # ${SOURCES}
 )
 
 target_link_libraries(DataStructures_Test gtest_main DataStructures)

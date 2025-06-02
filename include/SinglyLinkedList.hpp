@@ -103,7 +103,7 @@ public:
     /**
      * Removes and returns the element at the specified index
      * 
-     * Must be O(1) for head and tail and O(n) for all others
+     * Must be O(1) for head and O(n) for all others
      * 
      * @param index the index of the element to remove
      * @return the data that was removed at the specified index
@@ -114,7 +114,7 @@ public:
     /**
      * Removes and returns the first element of the list
      * 
-     * Must be O(n)
+     * Must be O(1)
      * 
      * @return the data formerly located at the front of the list
      * @throws std::out_of_range if the list is empty
@@ -140,7 +140,7 @@ public:
      * @return the data stored at the index in the list
      * @throws std::out_of_range if index < 0 or index >= size
      */
-    T get(int index);
+    T get(int index) const;
 
     /**
      * Returns whether or not the list is empty
@@ -209,135 +209,158 @@ public:
 template<typename T>
 void SinglyLinkedList<T>::addAtIndex(int index, T data)
 {
-    // checking if index arg is out of bounds
+    // checking index bounds
     if (index < 0 || index > size)
-        throw std::out_of_range("addAtIndex(): out of bounds");
+        throw std::out_of_range("addAtIndex(): cannot add at out of bounds index");
 
-    // checking if data arg is out of bounds
+    // checking for null data
     if constexpr (std::is_pointer<T>::value)
     {
         if (data == nullptr)
-            throw std::invalid_argument("addAtIndex(): data is null");
+            throw std::invalid_argument("addAtIndex(): cannot add nullptr data");
     }
 
-    if (index == 0) addToFront(data);
-    else if (index == size) addToBack(data);
-    else
-    {
-        Node* newNode = new Node(data);
+    if (index == 0) return addToFront(data);
+    else if (index == size) return addToBack(data);
 
-        Node* current { head };
-        for (size_t i = 0; i < index - 1; i++) current = current->next;
+    // handle adding in the middle of the list
+    Node* newNode = new Node(data);
+    
+    // iterate until we have the node before index
+    Node* current = head;
+    for (size_t i = 0; i < index - 1; i++) current = current->next;
 
-        newNode->next = current->next;
-        current->next = newNode;
+    // insert newNode
+    newNode->next = current->next;
+    current->next = newNode;
 
-        size++;
-    }
+    size++;
 }
 
 template<typename T>
 void SinglyLinkedList<T>::addToFront(T data)
 {
+    // check for null data
     if constexpr (std::is_pointer<T>::value)
     {
         if (data == nullptr)
-            throw std::invalid_argument("addToFront(): data is null");
+            throw std::invalid_argument("addToFront(): cannot add nullptr data");
     }
 
+    // create new node with the data given
     Node* newNode = new Node(data);
 
-    if (size > 0) newNode->next = head;
-    else if (size == 0) tail = newNode; // dont forget this
-    head = newNode;
+    if (size == 0) tail = newNode;
+    else newNode->next = head;
 
+    head = newNode;
     size++;
 }
 
 template<typename T>
 void SinglyLinkedList<T>::addToBack(T data)
 {
+    // check for null data
     if constexpr (std::is_pointer<T>::value)
     {
         if (data == nullptr)
-            throw std::invalid_argument("addToBack(): data is null");
+            throw std::invalid_argument("addToBack(): cannot add nullptr data");
     }
 
+    // create new node with the data given
     Node* newNode = new Node(data);
 
-    if (size > 0) tail->next = newNode;
-    else if (size == 0) head = newNode; // dont forget this
-    tail = newNode;
+    if (size == 0) head = newNode;
+    else tail->next = newNode;
 
+    tail = newNode;
     size++;
 }
 
 template<typename T>
 T SinglyLinkedList<T>::removeAtIndex(int index)
 {
+    // check for index out of bounds
     if (index < 0 || index >= size)
-        throw std::out_of_range("removeAtIndex(): out of bounds");
+        throw std::out_of_range("removeAtIndex(): cannot remove because index is out of bounds");
 
-    if (index == 0) removeFromFront();
-    else if (index == size - 1) removeFromBack();
-    else
-    {
-        Node* current { head };
-        for (size_t i = 0; i < index - 1; i++) current = current->next;
+    if (index == 0) return removeFromFront();
+    else if (index == size - 1) return removeFromBack();
 
-        Node* removed = current->next;
-        T ret = removed->data;
+    // iterate until we have the node before index
+    Node* current = head;
+    for (size_t i = 0; i < index - 1; i++) current = current->next;
 
-        current->next = removed->next;
-        size--;
+    // capture the node to remove
+    Node* removed = current->next;
+    T ret = removed->data;
 
-        delete removed; // garbage collection
-        return ret;
-    }
+    // remove from list
+    current->next = removed->next;
+
+    delete removed; // garbage collection
+    size--;
+    return ret;
 }
 
 template<typename T>
 T SinglyLinkedList<T>::removeFromFront()
 {
+    // check for empty list
     if (size == 0)
-        throw std::out_of_range("removeFromFront(): the list is empty");
+        throw std::out_of_range("removeFromFront(): cannot remove because list is empty");
 
-    Node* removed { head };
+    // grab node at the head
+    Node* removed = head;
     T ret = removed->data;
 
-    head = head->next;
-    size--;
+    if (size == 1)
+    {
+        head = nullptr;
+        tail = nullptr;
+    }
+    else head = head->next;
 
     delete removed; // garbage collection
+    size--;
     return ret;
 }
 
 template<typename T>
 T SinglyLinkedList<T>::removeFromBack()
 {
+    // check for empty list
     if (size == 0)
-        throw std::out_of_range("removeFromBack(): the list is empty");
+        throw std::out_of_range("removeFromFront(): cannot remove because list is empty");
 
-    Node* removed { tail };
+    // grab node at the tail
+    Node* removed = tail;
     T ret = removed->data;
 
-    Node* current { head };
-    for (size_t i = 0; i < size - 1; i++) current = current->next;
+    if (size == 1)
+    {
+        head = nullptr;
+        tail = nullptr;
+    }
+    else
+    {
+        Node* current = head;
+        for (size_t i = 0; i < size - 2; i++) current = current->next;
 
-    tail = current;
-    size--;
+        current->next = nullptr;
+        tail = current;
+    }
 
     delete removed; // garbage collection
+    size--;
     return ret;
 }
 
 template<typename T>
-T SinglyLinkedList<T>::get(int index)
+T SinglyLinkedList<T>::get(int index) const
 {
-    if (index < 0 || index >= size)
-        throw std::out_of_range("get(): out of bounds");
-    
-    Node* current { head };
+    // iterate to the node at index
+    Node* current = head;
     for (size_t i = 0; i < index; i++) current = current->next;
 
     return current->data;
@@ -352,11 +375,12 @@ bool SinglyLinkedList<T>::isEmpty() const
 template<typename T>
 void SinglyLinkedList<T>::clear()
 {
-    Node* current { head };
+    Node* current = head;
+
     while (current)
     {
         Node* next = current->next;
-
+        
         delete current;
         current = next;
     }
@@ -369,35 +393,57 @@ void SinglyLinkedList<T>::clear()
 template<typename T>
 T SinglyLinkedList<T>::removeLastOccurrence(T data)
 {
+    // check for null data
     if constexpr (std::is_pointer<T>::value)
     {
         if (data == nullptr)
-            throw std::invalid_argument("removeLastOccurrence(): data is null");
+            throw std::invalid_argument("removeLastOccurrence(): cannot remove nullptr data");
     }
 
-    if (size == 0)
-        throw std::invalid_argument("removeLastOccurrence(): the list is empty");
+    Node* removed { nullptr };
+    Node* removedPrev { nullptr };
 
-    int removeInd { -1 };
+    Node* current = head;
+    Node* prev { nullptr };
 
-    int i = 0;
-    Node* current { head };
     while (current)
     {
-        if (current->data == data) removeInd = i;
+        if (current->data == data)
+        {
+            removed = current;
+            removedPrev = prev;
+        }
 
+        prev = current;
         current = current->next;
-        i++;
     }
 
-    if (removeInd == -1)
-        throw std::invalid_argument("removeLastOccurrence(): data not found in list");
+    if (removed == nullptr)
+        throw std::invalid_argument("removeLastOccurrence(): cannot remove data that does not exist in list");
 
-    return removeAtIndex(removeInd);
+    if (removed == head) return removeFromFront();
+
+    T ret = removed->data;
+    removedPrev->next = removed->next;
+
+    delete removed;
+    size--;
+    return ret;
 }
 
 template<typename T>
 std::vector<T> SinglyLinkedList<T>::toArray() const
 {
-    return {};
+    // return container
+    std::vector<T> ret;
+
+    // iterate over all nodes and add to container
+    Node* current = head;
+    while (current)
+    {
+        ret.push_back(current->data);
+        current = current->next;
+    }
+
+    return ret;
 }
