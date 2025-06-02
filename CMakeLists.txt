@@ -21,7 +21,7 @@ include_directories(include)
 
 # defining source files
 set(SOURCES
-    src/temp.cpp
+    src/SinglyLinkedList.cpp
 )
 
 # adding source files
@@ -29,7 +29,7 @@ add_library(DataStructures ${SOURCES})
 
 # defining test files
 set(TESTS
-    tests/temp.cpp
+    tests/SinglyLinkedListTest.cpp
     tests/main.cpp
 )
 
