@@ -36,7 +36,7 @@ set(TESTS
 # adding test executable
 add_executable(DataStructures_Test
     ${TESTS}
-    # ${SOURCES}
+    ${SOURCES}
 )
 
 target_link_libraries(DataStructures_Test gtest_main DataStructures)
