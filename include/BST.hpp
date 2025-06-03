@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <queue>
+#include <iostream>
 
 #include "BSTNode.hpp"
 
@@ -18,12 +20,17 @@ private:
     Node* root;
     size_t size;
 
+    enum class TraversalEnum {
+        PREORDER, INORDER, POSTORDER
+    };
+
     /*
         private helper methods
     */
 
    /**
      * This is a recursive method that calls itself in order to help us find where we should add the new data.
+     * 
      * @param current Current will be the node that the recursive method is currently getting the data and comparing.
      * @param data Data is the information that we want to add to the BST.
      * @return We will be returning another node which will do nothing in the wrapper method, but will return the
@@ -34,6 +41,7 @@ private:
     /**
      * This is the recursive method that we will call in remove() that will allow us to traverse through the BST
      * and find and remove the data.
+     * 
      * @param current Current is the current node that we are observing and comparing the data to the data passed in.
      * @param data Data is the information that was given to the remove method that we will compare node data to.
      * @param dummy Dummy is a Node Object that we will create to store the data that we will remove.
@@ -42,17 +50,52 @@ private:
     Node* recursiveRemove(Node* current, T data, Node* dummy);
 
     /**
-     * Recrusive helper lambda that will handle all of the traversals
+     * This is another helper method that will find the successor in the case that the data that we want to remove
+     * has 2 children.
+     * 
+     * @param current Current is the current node that we are observing and checking if it has children.
+     * @param dummy Dummy here is a different than the other dummy in the rRemove() that will store the data of the
+     *              successor.
+     * @return We will return the node that we will set the precious current's child with.
      */
-    template<typename Func>
-    void traverse(Node* current, Func&& fn) const
-    {
-        if (!current) return;
+    Node* findSuccessor(Node* current, Node* dummy);
 
-        traverse(current->getLeft(), fn);
-        fn(current);
-        traverse(current->getRight(), fn);
-    }
+    /**
+     * Recrusive helper that takes in a a enum to differentiate between traversal types
+     * 
+     * @param current the current node that we are at during the traversal
+     * @param list a reference to the list that we want to populate
+     * @param type TraversalEnum which dictates which traversal type
+     */
+    void traverse(Node* current, std::vector<T>& list, const TraversalEnum& type) const;
+
+    /**
+     * This is the recursive method that will traverse to the bottom on the BST and then start calculating the height.
+     * 
+     * @param current Current is the current node that we are observing.
+     * @return We will return the value of height for the root.
+     */
+    int recursiveHeight(Node* current) const;
+
+    /**
+     * This is the recursive helper method that will traverse through all of the nodes
+     * and delete them because we have dynamically allocated nodes
+     * 
+     * The high level is that we will recurse to the bottom and remove nodes from the bottom up
+     * 
+     * @param current the current node that we are at durring the traversal
+     * @return returns for pointer reinforcement (should just return nullptr)
+     */
+    Node* recursiveClear(Node* current);
+
+    /**
+     * This is th recursive method that we will call in pruneGreaterThan() to remove the nodes greater than data.
+     * @param current Current is the current node that we are observing.
+     * @param data Data is the data that we are trying to find the nodes greater than and remove.
+     * @param <T> the generic typing of the data in the BST.
+     * @return Returns the node that a previous call needs to set left or right.
+     */
+    Node* recursivePruneGreaterThan(Node* current, const T& data);
 
 public:
     // default constructor
@@ -63,8 +106,32 @@ public:
 
     // list constructor
     BST(std::vector<T> list)
+        : BST()
     {
-        
+        for (const auto& element : list)
+        {
+            std::cout << element << '\n';
+            add(element);
+        }
+    }
+
+    // default destructor
+    ~BST() { clear(); }
+
+    // define safe move assignment operator
+    BST& operator=(BST&& other) noexcept
+    {
+        if (this != &other)
+        {
+            clear();
+            root = other.root;
+            size = other.size;
+
+            other.root = nullptr;
+            other.size = 0;
+        }
+
+        return *this;
     }
 
     /**
@@ -131,7 +198,7 @@ public:
      * @throws std::invalid_argument if data is nullptr (pointer types)
      * @throws std::out_of_range if the data does not exist in the BST
      */
-    T get(T data) const;
+    const T& get(T data) const;
 
     /**
      * Returns whether or not data matching the given parameter is contained
@@ -210,7 +277,7 @@ public:
      *
      * @return the height of the root of the tree, -1 if the tree is empty
      */
-    size_t height() const;
+    int height() const;
 
     /**
      * Clears the tree.
@@ -253,7 +320,7 @@ public:
      *           /
      *          13
      *
-     * Should have a running time of O(log(n)) for balanced tree. O(n) for a degenerated tree.
+     * Should have a running time of O(n) - for garbage cleanup
      *
      * @throws std::invalid_argument if data is nullptr (pointer types)
      * @param data the threshold data. Elements greater than data should be removed
@@ -284,79 +351,301 @@ public:
 };
 
 template<typename T>
-BSTNode<T>* BST<T>::recursiveAdd(BSTNode<T>* current, T data)
+BSTNode<T>* BST<T>::recursiveAdd(Node* current, T data)
 {
+    // base case: at a nullptr node from a leaf node
+    if (!current)
+    {
+        size++;
+        return new Node(data);
+    }
 
+    // grab current node's data for comparision
+    T currentData = current->getData();
+
+    // recurse
+    if (currentData > data) current->setLeft(recursiveAdd(current->getLeft(), data));
+    else if (currentData < data) current->setRight(recursiveAdd(current->getRight(), data));
+
+    // this handles the case where we have a duplicate by just passing back a pointer to the node with the same data
+    return current;
 }
 
 template<typename T>
-BSTNode<T>* BST<T>::recursiveRemove(BSTNode<T>* current, T data, BSTNode<T>* dummy)
+BSTNode<T>* BST<T>::recursiveRemove(Node* current, T data, Node* dummy)
 {
+    // base case: we recursed through and didnt find the data that we want to remove
+    if (!current) throw std::out_of_range("we couldn't find the data that we want to remove");
 
+    // grab the current node's data for comparisons
+    T currentData = current->getData();
+
+    // recurse or found the node
+    if (currentData > data) current->setLeft(recursiveRemove(current->getLeft(), data, dummy));
+    else if (currentData < data) current->setRight(recursiveRemove(current->getRight(), data, dummy));
+    else
+    {
+        // found the node so store the data into dummy node
+        dummy->setData(currentData); // no default constructor: will overwrite this value
+        size--;
+
+        // checking for children
+        if (!current->getLeft() && !current->getRight()) return nullptr; // no children
+        else if (current->getLeft() && !current->getRight()) return current->getLeft(); // left child
+        else if (!current->getLeft() && current->getRight()) return current->getRight(); // right child
+        else // both children
+        {
+            // create dummy for findSuccessor to use and store data
+            Node otherDummy(data);
+            current->setRight(findSuccessor(current->getRight(), &otherDummy));
+            current->setData(otherDummy.getData());
+
+            return current;
+        }
+    }
+
+    // this is only ran after the recurse left or right and come back
+    return current;
+}
+
+template<typename T>
+BSTNode<T>* BST<T>::findSuccessor(Node* current, Node* dummy)
+{
+    // current will start off as a valid node
+    if (current->getLeft()) current->setLeft(findSuccessor(current->getLeft(), dummy));
+    else
+    {
+        // we are at the last node going left so set dummy data
+        dummy->setData(current->getData());
+
+        // check and return the right child if exists
+        return current->getRight() ? current->getRight() : nullptr;
+    }
+
+    // this runs once the left recursion comes back
+    return current;
+}
+
+template<typename T>
+void BST<T>::traverse(Node* current, std::vector<T>& list, const TraversalEnum& type) const
+{
+    if (!current) return;
+
+    if (type == TraversalEnum::PREORDER) list.push_back(current->getData());
+    traverse(current->getLeft(), list, type);
+    if (type == TraversalEnum::INORDER) list.push_back(current->getData());
+    traverse(current->getRight(), list, type);
+    if (type == TraversalEnum::POSTORDER) list.push_back(current->getData());
+}
+
+template<typename T>
+int BST<T>::recursiveHeight(Node* current) const
+{
+    if (!current) return -1;
+
+    int leftHeight { recursiveHeight(current->getLeft()) };
+    int rightHeight { recursiveHeight(current->getRight()) };
+
+    return std::max(leftHeight, rightHeight) + 1;
+}
+
+template<typename T>
+BSTNode<T>* BST<T>::recursiveClear(Node* current)
+{
+    if (!current) return nullptr;
+
+    current->setLeft(recursiveClear(current->getLeft()));
+    current->setRight(recursiveClear(current->getRight()));
+
+    delete current;
+    size--;
+    return nullptr;
+}
+
+template<typename T>
+BSTNode<T>* BST<T>::recursivePruneGreaterThan(Node* current, const T& data)
+{
+    if (!current) return nullptr;
+
+    current->setLeft(recursivePruneGreaterThan(current->getLeft(), data));
+    current->setRight(recursivePruneGreaterThan(current->getRight(), data));
+
+    if (current->getData() <= data) return current;
+
+    Node* leftChild = current->getLeft();
+    Node* rightChild = current->getRight();
+
+    delete current;
+    size--;
+
+    recursiveClear(rightChild);
+
+    return leftChild;
 }
 
 template<typename T>
 void BST<T>::add(T data)
 {
+    // check if data is null
+    if constexpr (std::is_pointer<T>::value)
+    {
+        if (!data) throw std::invalid_argument("cannot add nullptr data (pointer types)");
+    }
 
+    // check if we already have a root
+    if (!root)
+    {
+        root = new Node(data);
+        size++;
+    }
+    else recursiveAdd(root, data);
 }
 
 template<typename T>
 T BST<T>::remove(T data)
 {
+    // check if data is null
+    if constexpr (std::is_pointer<T>::value)
+    {
+        if (!data) throw std::invalid_argument("cannot remove nullptr data (pointer types)");
+    }
 
+    if (!root) throw std::out_of_range("cannot remove from empty tree");
+
+    // make dummy data to store the value that we are removing
+    Node dummy(data); // no default constructor: overwrite data once we find the node
+
+    root = recursiveRemove(root, data, &dummy);
+
+    return dummy.getData();
 }
 
 template<typename T>
-T BST<T>::get(T data) const
+const T& BST<T>::get(T data) const
 {
+    // check for null data
+    if constexpr (std::is_pointer<T>::value)
+    {
+        if (!data) throw std::invalid_argument("cannot find nullptr data (pointer types)");
+    }
 
+    Node* current = root;
+    while (current)
+    {
+        const T& currentData = current->getData();
+
+        if (currentData > data) current = current->getLeft();
+        else if (currentData < data) current = current->getRight();
+        else return current->getData();
+    }
+
+    throw std::out_of_range("data not found in the tree");
 }
 
 template<typename T>
 bool BST<T>::contains(T data) const
 {
+    // check for null data
+    if constexpr (std::is_pointer<T>::value)
+    {
+        if (!data) throw std::invalid_argument("cannot find nullptr data (pointer types)");
+    }
 
+    Node* current = root;
+    while (current)
+    {
+        T currentData = current->getData();
+
+        if (currentData > data) current = current->getLeft();
+        else if (currentData < data) current = current->getRight();
+        else return true;
+    }
+
+    return false;
 }
 
 template<typename T>
 std::vector<T> BST<T>::preorder() const
 {
+    std::vector<T> ret;
+    ret.reserve(size); // [optimization] pre-allocating space for ret
 
+    traverse(root, ret, TraversalEnum::PREORDER);
+
+    return ret;
 }
 
 template<typename T>
 std::vector<T> BST<T>::inorder() const
 {
+    std::vector<T> ret;
+    ret.reserve(size); // [optimization] pre-allocating space for ret
 
+    traverse(root, ret, TraversalEnum::INORDER);
+
+    return ret;
 }
 template<typename T>
 std::vector<T> BST<T>::postorder() const
 {
+    std::vector<T> ret;
+    ret.reserve(size); // [optimization] pre-allocating space for ret
 
+    traverse(root, ret, TraversalEnum::POSTORDER);
+
+    return ret;
 }
 
 template<typename T>
 std::vector<T> BST<T>::levelorder() const
 {
+    std::vector<T> ret;
+    ret.reserve(size); // [optimization] pre-allocating space for ret
+    if (!root) return ret; // check for empty tree
 
+    // create queue and add root
+    std::queue<Node*> fifo;
+    fifo.push(root);
+
+    while (!fifo.empty())
+    {
+        // grab and remove the front value of the queue
+        Node* current = fifo.front();
+        fifo.pop();
+
+        // add data to vector
+        ret.push_back(current->getData());
+
+        // add children to queue if possible
+        if (current->getLeft()) fifo.push(current->getLeft());
+        if (current->getRight()) fifo.push(current->getRight());
+    }
+
+    return ret;
 }
 
 template<typename T>
-size_t BST<T>::height() const
+int BST<T>::height() const
 {
+    if (!root) return -1;
 
+    return recursiveHeight(root);
 }
 
 template<typename T>
 void BST<T>::clear()
 {
-
+    root = recursiveClear(root);
 }
 
 template<typename T>
 BSTNode<T>* BST<T>::pruneGreaterThan(T data)
 {
+    // check for empty tree
+    if (!root) return nullptr;
 
+    // check if we can even remove
+    root = recursivePruneGreaterThan(root, data);
+    return root;
 }
 
