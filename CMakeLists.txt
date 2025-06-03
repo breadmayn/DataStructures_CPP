@@ -27,7 +27,7 @@ add_library(DataStructures ${SOURCES})
 
 # defining test files
 set(TESTS
-    tests/temp.cpp
+    tests/AVLTest.cpp
     tests/main.cpp
 )
 
