@@ -27,7 +27,7 @@ public:
     /*
         getter methods
     */
-    T getData() const { return data; }
+    const T& getData() const { return data; }
     Node* getLeft() const { return left; }
     Node* getRight() const { return right; }
 

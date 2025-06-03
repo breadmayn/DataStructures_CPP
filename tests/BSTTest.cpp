@@ -8,12 +8,12 @@ protected:
 
     void SetUp() override
     {
-        tree = BST<int>();
+        tree = std::move(BST<int>());
     }
 
     void TearDown() override
     {
-
+        tree.clear();
     }
 };
 
@@ -33,17 +33,22 @@ TEST_F(BSTTest, testConstructor)
             1
     */
 
-    std::vector<int> data;
-    data.push_back(2);
-    data.push_back(0);
-    data.push_back(1);
-    tree = BST<int>(data);
+    std::vector<int> data { 2, 0, 1 };
+    tree = std::move(BST<int>(data));
 
     ASSERT_EQ(3, tree.getSize());
 
-    ASSERT_EQ(2, tree.getRoot()->getData());
-    ASSERT_EQ(0, tree.getRoot()->getLeft()->getData());
-    ASSERT_EQ(1, tree.getRoot()->getLeft()->getRight()->getData());
+    BSTNode<int>* root = tree.getRoot();
+    ASSERT_NE(root, nullptr);
+    ASSERT_EQ(2, root->getData());
+
+    BSTNode<int>* left = root->getLeft();
+    ASSERT_NE(left, nullptr);
+    ASSERT_EQ(0, left->getData());
+
+    BSTNode<int>* right = left->getRight();
+    ASSERT_NE(right, nullptr);
+    ASSERT_EQ(1, right->getData());
 }
 
 TEST_F(BSTTest, testAdd)
