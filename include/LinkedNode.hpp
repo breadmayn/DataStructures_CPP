@@ -2,6 +2,7 @@
 
 #include <string>
 #include <format>
+#include <ostream>
 
 /**
  * Node class used for implementing your linked data structures
@@ -30,5 +31,11 @@ public:
 
     void setNext(LinkedNode<T>* next) { this->next = next; }
 
-    std::string toString() const { return "Node containing " + std::to_string(data); }
+    std::string toString() const
+    {
+        std::ostringstream oss;
+        oss << "Node containing " << data << '\n';
+
+        return oss.str();
+    }
 };

@@ -25,6 +25,23 @@ public:
         , size(0)
     { }
 
+    // default destructor
+    ~LinkedQueue()
+    {
+        Node* current = head;
+
+        while (current)
+        {
+            Node* next = current->getNext();
+
+            delete current;
+            current = next;
+        }
+
+        head = nullptr;
+        tail = nullptr;
+    }
+
     /**
      * Adds the data to the back of the queue
      * 
@@ -80,17 +97,44 @@ public:
 template<typename T>
 void LinkedQueue<T>::enqueue(T data)
 {
-    
+    // check if data is null
+    if constexpr (std::is_pointer<T>::value)
+    {
+        if (!data) throw std::invalid_argument("cannot enqueue nullptr data (pointer types)");
+    }
+
+    Node* newNode = new Node(data);
+
+    if (size == 0) head = newNode;
+    else tail->setNext(newNode);
+
+    tail = newNode;
+    size++;
 }
 
 template<typename T>
 T LinkedQueue<T>::dequeue()
 {
+    // check if queue is empty
+    if (size == 0) throw std::out_of_range("cannot dequeue because queue is empty");
 
+    // grab node to remove
+    Node* removed = head;
+    T ret = removed->getData();
+
+    // remove node
+    head = head->getNext();
+    delete removed;
+    size--;
+
+    return ret;
 }
 
 template<typename T>
 T LinkedQueue<T>::peek() const
 {
+    // check if queue is empty
+    if (size == 0) throw std::out_of_range("cannot dequeue because queue is empty");
 
+    return head->getData();
 }

@@ -62,7 +62,7 @@ TEST_F(QueueTest, testLinkedEnqueue)
     linked.enqueue("2a");   // 0a, 1a, 2a
     linked.enqueue("3a");   // 0a, 1a, 2a, 3a
     linked.enqueue("4a");   // 0a, 1a, 2a, 3a, 4a
-    EXPECT_EQ(array.getSize(), 5);
+    EXPECT_EQ(linked.getSize(), 5);
 
     LinkedNode<std::string>* current = linked.getHead();
     ASSERT_NE(current, nullptr);
@@ -103,8 +103,8 @@ TEST_F(QueueTest, testArrayDequeue)
     ASSERT_EQ(array.dequeue(), temp);
     EXPECT_EQ(array.getSize(), 5);
 
-    std::array<std::string, 5> expected {{
-        "0a", "1a", "2a", "3a", "4a"
+    std::array<std::optional<std::string>, 6> expected {{
+        std::nullopt, "1a", "2a", "3a", "4a", "5a"
     }};
 
     const std::optional<std::string>* arrBacking = array.getBackingArray().get();
