@@ -3,6 +3,7 @@
 #include <unordered_set>
 #include <vector>
 #include <optional>
+#include <functional>
 
 #include "ExternalChainingEntry.hpp"
 
@@ -19,6 +20,7 @@ private:
 
     BackingTable table;
     size_t size;
+    size_t numBuckets;
 
 public:
     static constexpr size_t INITIAL_CAPACITY { 13 };
@@ -33,6 +35,7 @@ public:
     ExternalChaining(size_t startingCapacity)
         : table(std::make_unique<ExternalChainingEntry<K, V>*[]>(startingCapacity))
         , size(0)
+        , numBuckets(startingCapacity)
     { }
 
     /**
@@ -161,8 +164,6 @@ public:
     /**
      * Returns the table of the map.
      *
-     * For grading purposes only. You shouldn't need to use this method since
-     * you have direct access to the variable.
      *
      * @return the table of the map
      */
@@ -171,46 +172,176 @@ public:
     /**
      * Returns the size of the map.
      *
-     * For grading purposes only. You shouldn't need to use this method since
-     * you have direct access to the variable.
-     *
      * @return the size of the map
      */
     size_t getSize() const { return size; }
+
+    /**
+     * Returns the capacity of the map.
+     *
+     * @return the capacity of the map
+     */
+    size_t getNumBuckets() const { return numBuckets; }
 };
 
 template<typename K, typename V>
-std::optional<V> ExternalChaining::put(K key, V value)
+void ExternalChaining<K, V>::resizeBackingTable(size_t length)
+{
+    // check if the length argument is smaller than the number of elements in the table
+    if (length < size)
+        throw std::invalid_argument("cannot resize because length is smaller than the number of elements in the map");
+
+    // create new table to replace the old table with
+    BackingTable newTable { std::make_unique<ExternalChainingEntry<K, V>*[]>(length) };
+
+    // iterate over the old table and re-map to the new table
+    size_t count { 0 };
+    for (size_t i = 0; i < numBuckets; i++)
+    {
+        // grab the head of the current bucket
+        ExternalChainingEntry<K, V>* current { table[i] };
+
+        // iterate over the list in the current bucket
+        while (current)
+        {
+            // grab the next value before reassignment
+            ExternalChainingEntry<K, V>* next = current->getNext();
+
+            // calculate the new index depending on the new table's length
+            size_t index = std::hash<K>{}(current->getKey());
+
+            // add to the head of the new bucket
+            current->setNext(newTable[index]);
+            newTable[index] = current;
+
+            current = next;
+
+            count++;
+            if (count == size) break;
+        }
+
+        if (count == size) break;
+    }
+
+    // update class attributes
+    table = std::move(newTable);
+    numBuckets = length;
+}
+
+template<typename K, typename V>
+std::optional<V> ExternalChaining<K, V>::put(K key, V value)
+{
+    // check if key is null
+    if constexpr (std::is_pointer<K>::value)
+    {
+        if (!key) throw std::invalid_argument("cannot put because key is nullptr (pointer types)");
+    }
+
+    // check if value is null
+    if constexpr (std::is_pointer<K>::value)
+    {
+        if (!value) throw std::invalid_argument("cannot put because value is nullptr (pointer types)");
+    }
+
+    // check if we need to resize
+    if ((static_cast<double>(size + 1) / numBuckets) > MAX_LOAD_FACTOR)
+        resizeBackingTable(2 * numBuckets + 1);
+
+    // calculate index to insert at
+    size_t index { std::hash<K>{}(key) % numBuckets };
+
+    // check if we already have a list that we need to append to
+    if (!table[index]) table[index] = new ExternalChainingEntry<K, V>(key, value);
+    else
+    {
+        // grab the head of the list
+        ExternalChainingEntry<K, V>* current = table[index];
+
+        // iterate over all the elements of the list
+        while (current)
+        {
+            // check if we have duplicate key and update the value
+            if (current->getKey() == key)
+            {
+                std::optional<V> removedValue = current->getValue();
+                current->setValue(value);
+                return removedValue;
+            }
+            current = current->getNext();
+        }
+
+        // if we didn't return (duplicate key) then we should add at the head
+        ExternalChainingEntry<K, V>* newEntry = new ExternalChainingEntry<K, V>(key, value, table[index]);
+        table[index] = newEntry;
+    }
+    size++;
+    return std::nullopt;
+}
+
+template<typename K, typename V>
+V ExternalChaining<K, V>::remove(K key)
+{
+    if constexpr (std::is_pointer<K>::value)
+    {
+        if (!key) throw std::invalid_argument("Cannot remove nullptr key (pointer types)");
+    }
+
+    if (size == 0) throw std::out_of_range("Cannot remove from empty map");
+
+    // calculate the index that this key would exist in
+    size_t index { std::hash<K>{}(key) };
+    
+    if (table[index]) throw std::out_of_range("Cannot remove because key that was not found");
+
+    ExternalChainingEntry<K, V>* current { table[index] };
+    ExternalChainingEntry<K, V>* prev { nullptr };
+
+    // iterate over the current bucket and try to find the same key
+    while (current)
+    {
+        if (current->getKey() == key)
+        {
+            if (!prev) table[index] = current->getNext();
+            else
+            {
+                prev->setNext(current->getNext());
+                current->setNext(nullptr);
+            }
+
+            V removed = current->getValue();
+
+            delete current;
+            size--;
+            return removed;
+        }
+
+        prev = current;
+        current = current->getNext();
+    }
+
+    throw new std::out_of_range("Cannot remove because key was not found");
+}
+
+template<typename K, typename V>
+V ExternalChaining<K, V>::get(K key) const
 {
 
 }
 
 template<typename K, typename V>
-V ExternalChaining::remove(K key)
+bool ExternalChaining<K, V>::containsKey(K key) const
 {
 
 }
 
 template<typename K, typename V>
-V ExternalChaining::get(K key) const
+std::unordered_set<K> ExternalChaining<K, V>::keySet() const
 {
 
 }
 
 template<typename K, typename V>
-bool ExternalChaining::containsKey(K key) const
-{
-
-}
-
-template<typename K, typename V>
-std::unordered_set<K> ExternalChaining::keySet() const
-{
-
-}
-
-template<typename K, typename V>
-std::vector<V> ExternalChaining::values() const
+std::vector<V> ExternalChaining<K, V>::values() const
 {
 
 }

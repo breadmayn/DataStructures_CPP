@@ -29,7 +29,7 @@ add_library(DataStructures ${SOURCES})
 
 # defining test files
 set(TESTS
-    tests/temp.cpp
+    tests/ExternalChainingTest.cpp
     tests/main.cpp
 )
 

@@ -26,6 +26,8 @@ public:
         , next(next)
     { }
 
+    
+
     /*
         getter methods
     */
